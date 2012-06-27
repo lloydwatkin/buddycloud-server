@@ -44,19 +44,22 @@ config.load "/etc/buddycloud-server/config.js", (args, opts) ->
     logger = logger_.makeLogger 'main'
 
     if opts.debug
+        require("v8-profiler")
         process.on 'uncaughtException', (err) ->
             logger.error "uncaughtException: #{err.stack || err.message || err.toString()}"
 
+    unless config.advertiseDomains?
+      config.advertiseDomains = []
 
     errors = require('./errors')
 
     model = require('./local/model_postgres')
     model.start config.modelConfig
 
-    router = new (require('./router').Router)(model, config.checkCreateNode, config.autosubscribeNewUsers)
+    router = new (require('./router').Router)(model, config)
 
     # XMPP Connection, w/ presence tracking
-    xmppConn = new (require('./xmpp/connection').Connection)(config.xmpp)
+    xmppConn = new (require('./xmpp/connection').Connection)(config.xmpp, config.additionalDomains)
     pubsubServer = new (require('./xmpp/pubsub_server').PubsubServer)(xmppConn)
     pubsubBackend = new (require('./xmpp/backend_pubsub').PubsubBackend)(xmppConn)
     router.addBackend pubsubBackend

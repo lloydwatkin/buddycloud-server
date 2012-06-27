@@ -9,6 +9,7 @@ RSM = require('./rsm')
 class Request
     constructor: (conn, @opts, cb) ->
         @myJid = conn.jid
+          
         iq = @requestIq().root()
         iq.attrs.to = @opts.jid
         conn.sendIq iq, (err, replyStanza) =>
@@ -20,6 +21,7 @@ class Request
             err = null
             try
                 result = @decodeReply replyStanza
+                logger.debug replyStanza
             catch e
                 logger.error e.stack
                 err = e
@@ -68,6 +70,8 @@ class exports.DiscoverItems extends DiscoverRequest
             if el.attrs.node
                 result.node = el.attrs.node
             @results.push result
+        if el.attrs.from is 'topics.surevine5.net' and el.attrs.actorType is 'server'
+          @results.push { jid: 'buddycloud.surevine5.net' }
 
 class exports.DiscoverInfo extends DiscoverRequest
     xmlns: NS.DISCO_INFO

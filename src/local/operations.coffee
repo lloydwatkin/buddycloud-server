@@ -259,13 +259,7 @@ class PrivilegedOperation extends ModelOperation
 class BrowseInfo extends Operation
 
     run: (cb) ->
-        cb null,
-            features: [
-                NS.DISCO_INFO, NS.DISCO_ITEMS,
-                NS.REGISTER,
-                NS.PUBSUB, NS.PUBSUB_OWNER
-            ]
-            identities: [{
+        identities = [{
                 category: "pubsub"
                 type: "service"
                 name: "XEP-0060 service"
@@ -278,6 +272,20 @@ class BrowseInfo extends Operation
                 type: "inbox"
                 name: "Channels inbox service"
             }]
+        if @req.iq.attrs.to in @router.config.advertiseDomains
+          to   = @req.iq.attrs.to
+          identities = [{
+              category: "pubsub"
+              type: "channels"
+              name: "Buddycloud proxy domain"
+          }]
+        cb null,
+            features: [
+                NS.DISCO_INFO, NS.DISCO_ITEMS,
+                NS.REGISTER,
+                NS.PUBSUB, NS.PUBSUB_OWNER
+            ]
+            identities: identities
 
 
 class BrowseNodeInfo extends PrivilegedOperation
@@ -305,6 +313,7 @@ class BrowseNodeInfo extends PrivilegedOperation
 
 class BrowseNodes extends ModelOperation
     transaction: (t, cb) ->
+        logger.info "BrowseNodes: #{inspect t}"
         rsm = @req.rsm
         @fetchNodes t, (err, results) =>
             if err
@@ -316,6 +325,7 @@ class BrowseNodes extends ModelOperation
             cb null, results
 
     fetchNodes: (t, cb) ->
+    
         t.listNodes cb
 
 class BrowseTopFollowedNodes extends BrowseNodes
@@ -429,7 +439,7 @@ class CreateNode extends ModelOperation
             return cb new errors.BadRequest("Malformed node name")
         isTopic = nodeUser isnt @req.actor
         nodePrefix = "/user/#{nodeUser}/"
-
+        
         try
             opts =
                 node: @req.node
@@ -545,6 +555,8 @@ class Subscribe extends PrivilegedOperation
             @checkAccessModel t, cb2
         ], (err) =>
             if err
+                logger.error "Subscribe error:"
+                logger.error err
                 return cb err
 
             @privilegedTransaction t, cb
@@ -1357,7 +1369,9 @@ exports.run = (router, request, cb) ->
         logger.warn "Unimplemented operation #{opName}: #{inspect request}"
         return cb?(new errors.FeatureNotImplemented("Unimplemented operation #{opName}"))
 
+    logger.debug "Operation to run: #{opName}"
     logger.debug "operations.run: #{inspect request}"
+
     op = new opClass(router, request)
     op.run (error, result) ->
         if error

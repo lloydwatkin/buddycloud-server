@@ -28,13 +28,26 @@ class exports.PubsubBackend extends EventEmitter
         @conn.getOnlineResources(user).length > 0
 
     run: (router, opts, cb) ->
-        if opts.jid?
+        user = getNodeUser opts.node
+        domain = user.split '@'
+        domain = domain[1]
+        #logger.info "=========================="
+        #logger.info domain
+        #logger.info router.config.advertiseDomains
+        #logger.info user                
+        if opts.jid? 
+            #or domain in router.config.advertiseDomains
+            #if not opts.jid
+              #opts.jid = user
+              #logger.info "=========================="
+              #logger.info user
+              #logger.info opts.operation
             # Target server already known
+            connection = @conn
             reqClass = pubsubClient.byOperation(opts.operation)
             unless reqClass
                 return cb(new errors.FeatureNotImplemented("Operation #{opts.operation} not implemented for remote pubsub"))
-
-            req = new reqClass @conn, opts, (err, result) ->
+            req = new reqClass connection, opts, (err, result) ->
                 if err
                     cb err
                 else
@@ -61,6 +74,7 @@ class exports.PubsubBackend extends EventEmitter
                 else
                     opts2 = Object.create(opts)
                     opts2.jid = service
+                    process.exit
                     # Target server now known, recurse:
                     @run router, opts2, cb
 

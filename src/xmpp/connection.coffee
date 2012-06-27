@@ -19,7 +19,7 @@ MISSED_INTERVAL = 120 * 1000
 # XMPP Component Connection,
 # encapsulates the real node-xmpp connection
 class exports.Connection extends EventEmitter
-    constructor: (config) ->
+    constructor: (config, @additionalDomains = []) ->
         # For iq response tracking (@sendIq):
         @lastIqId = 0
         @iqCallbacks = {}
@@ -34,6 +34,14 @@ class exports.Connection extends EventEmitter
         # Anyone wants reconnecting, regardless of the config file:
         config.reconnect = true
         @conn = new xmpp.Component(config)
+        @additionalConnections = []
+        additionalConfig = {}
+        for i of config 
+          additionalConfig[i] = "#{config[i]}"
+        for i, jid of additionalDomains
+          additionalConfig.jid = "#{jid}"
+          @additionalConnections[jid] = new xmpp.Component(additionalConfig)
+        
         @conn.on "error", (e) ->
             logger.error e
         @conn.on "online", =>
@@ -77,8 +85,37 @@ class exports.Connection extends EventEmitter
                                     to: from
                                 ).c('you-missed-something', xmlns: NS.BUDDYCLOUD_V1)
                             , MISSED_INTERVAL
+        for i of @additionalConnections
+          @additionalConnections[i].on "online", =>
+              @emit "online"
+          @additionalConnections[i].on "stanza", (stanza) =>
+            # Just debug output:
+            stanzaString = stanza.toString().replace("\n",'')
+            logger.info "Stanza received::"
+            logger.info stanzaString
+            from         = stanza.attrs.from
+            to           = stanza.attrs.to
+            connection   = @additionalConnections[to]
+            switch stanza.name
+                when "iq"
+                       switch stanza.attrs.type
+                        when "get", "set"
+                            # IQ requests
+                            @_handleIq stanza, connection
+                        when "result" , "error"
+                            # IQ replies
+                            @iqCallbacks.hasOwnProperty(stanza.attrs.id)
+                            cb = @iqCallbacks[stanza.attrs.id]
+                            delete @iqCallbacks[stanza.attrs.id]
+                            if stanza.attrs.type is 'error'
+                                # TODO: wrap into new Error(...)
+                                cb and cb(new errors.StanzaError(stanza))
+                            else
+                                cb and cb(null, stanza)
+                when "presence"
+                    @_handlePresence stanza
 
-    send: (stanza) ->
+    send: (stanza, connection = @conn) ->
         stanza = stanza.root()
         unless stanza.attrs.from
             stanza.attrs.from = @jid
@@ -94,11 +131,14 @@ class exports.Connection extends EventEmitter
         # Serialize once (for logging and sending)
         s = stanza.toString()
         logger.trace ">> #{s}"
-        if stanza.attrs.to is @jid
+
+        if stanza.attrs.to is @jid or stanza.attrs.to in @additionalDomains
             # Loopback short-cut
-            @conn.emit 'stanza', stanza
+            connection.emit 'stanza', stanza
         else
-            @conn.send s
+            logger.info "----- sending message"
+            logger.info s.toString().replace("\n", '')
+            connection.send s
 
     ##
     # @param {Function} cb: Called with (errorStanza, resultStanza)
@@ -111,15 +151,29 @@ class exports.Connection extends EventEmitter
             delete @iqCallbacks[id]
             cb(new Error('timeout'))
         , IQ_TIMEOUT
+        connection = @getResponseConnection iq.attrs.to
         # Wrap callback to cancel timeout in case of success
         @iqCallbacks[id] = (error, result) ->
             clearTimeout timeout
             cb(error, result)
         # Finally, send out:
-        @send iq
+        @send iq, connection
 
     _handleMessage: (message) ->
         @emit 'message', message
+
+    ## Returns appropriate connection to reply with
+    # (used where advertiseDomains config option is present)
+    getResponseConnection: (user) ->
+      if user is @jid
+        return @conn
+      if user in @additionalDomains
+        return @additionalConnections[user]
+      logger.warn "No connection found"
+      logger.warn @additionalDomains
+      logger.warn user
+      logger.warn @jid
+      @conn
 
     ##
     # Returns all full JIDs we've seen presence from for a bare JID
@@ -202,7 +256,7 @@ class exports.Connection extends EventEmitter
                 if @onlineResources[bareJid].indexOf(resource) < 0
                     @onlineResources[bareJid].push resource
 
-    _handleIq: (stanza) ->
+    _handleIq: (stanza, connection = @conn) ->
         ##
         # Prepare stanza reply hooks
 
@@ -224,7 +278,7 @@ class exports.Connection extends EventEmitter
             )
             reply.cnode(child.root()) if child?.children?
 
-            @send reply
+            @send reply, connection
             replied = true
         # Interface for <iq type='error'/>
         stanza.replyError = (err) =>
@@ -243,7 +297,7 @@ class exports.Connection extends EventEmitter
                     c("text").
                     t('' + err.message)
 
-            @send reply
+            @send reply, connection
 
         ##
         # Fire handler, done.

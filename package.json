@@ -15,7 +15,8 @@
         "ain2": ">=1.1.0",
         "glob": "<3",
         "muffin": ">=0.2.7",
-        "coffee-script": ">=1.2.0"
+        "coffee-script": ">=1.2.0",
+        "v8-profiler": ">=3.6.2-1"
         }
 ,"repositories": [{"type": "git"
         ,"path": "git://github.com/buddycloud/buddycloud-server.git"
