@@ -48,6 +48,10 @@ class RemoteRouter
 
     authorizeFor: (sender, actor, cb) =>
         backends = new Array(@backends...)
+        logger.debug '----- backends'
+        logger.debug @backends
+        logger.debug "sender #{sender}"
+        logger.debug "actor #{actor}"
         tryBackend = =>
             backend = backends.shift()
             backend.authorizeFor sender, actor, (err, valid) ->

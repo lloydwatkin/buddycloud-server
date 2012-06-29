@@ -40,6 +40,7 @@ class exports.Connection extends EventEmitter
           additionalConfig[i] = "#{config[i]}"
         for i, jid of additionalDomains
           additionalConfig.jid = "#{jid}"
+          logger.debug "Creating additional connection for: #{jid}"
           @additionalConnections[jid] = new xmpp.Component(additionalConfig)
         
         @conn.on "error", (e) ->
@@ -96,6 +97,7 @@ class exports.Connection extends EventEmitter
             from         = stanza.attrs.from
             to           = stanza.attrs.to
             connection   = @additionalConnections[to]
+
             switch stanza.name
                 when "iq"
                        switch stanza.attrs.type
@@ -165,14 +167,6 @@ class exports.Connection extends EventEmitter
     ## Returns appropriate connection to reply with
     # (used where advertiseDomains config option is present)
     getResponseConnection: (user) ->
-      if user is @jid
-        return @conn
-      if user in @additionalDomains
-        return @additionalConnections[user]
-      logger.warn "No connection found"
-      logger.warn @additionalDomains
-      logger.warn user
-      logger.warn @jid
       @conn
 
     ##

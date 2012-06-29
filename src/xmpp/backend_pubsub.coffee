@@ -231,6 +231,7 @@ class BuddycloudDiscovery
             if err
                 return cb err
             valid = items?.some (item) ->
+                logger.debug "Authorize for #{sender} for #{actor} : #{item.jid}"
                 item.jid is sender
             logger.debug "authorizing #{sender} for #{actor}: #{valid}"
             cb null, valid

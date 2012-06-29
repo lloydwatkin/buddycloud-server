@@ -173,6 +173,7 @@ class DiscoItemsRequest extends Request
             delete @node
         else
             @operation = 'browse-node-items'
+        logger.debug "DiscoItemsRequest #{@operation}"
         @setRSM @discoItemsEl
 
     matches: () ->

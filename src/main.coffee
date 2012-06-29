@@ -59,7 +59,7 @@ config.load "/etc/buddycloud-server/config.js", (args, opts) ->
     router = new (require('./router').Router)(model, config)
 
     # XMPP Connection, w/ presence tracking
-    xmppConn = new (require('./xmpp/connection').Connection)(config.xmpp, config.additionalDomains)
+    xmppConn = new (require('./xmpp/connection').Connection)(config.xmpp, config.advertiseDomains)
     pubsubServer = new (require('./xmpp/pubsub_server').PubsubServer)(xmppConn)
     pubsubBackend = new (require('./xmpp/backend_pubsub').PubsubBackend)(xmppConn)
     router.addBackend pubsubBackend
@@ -116,13 +116,16 @@ config.load "/etc/buddycloud-server/config.js", (args, opts) ->
         router.onUserOffline user
 
     xmppConn.on 'online', ->
-        logger.info "XMPP connection established"
+        logger.info "XMPP connection established (#{xmppConn.jid})"
         process.title = "buddycloud-server #{version}: #{xmppConn.jid}"
         saidHello = no
+        #if xmppConn.jid not in config.advertiseDomains
         model.forListeners (listener) ->
-            unless saidHello
-                logger.info "server successfully started"
-                saidHello = yes
+          unless saidHello
+            logger.info "server successfully started"
+            saidHello = yes
             xmppConn.probePresence(listener)
-
-        router.setupSync Math.ceil((config.modelConfig.poolSize or 2) / 2)
+        # wait for a fully initialised server before starting tasks
+        sync = ->
+          router.setupSync Math.ceil((config.modelConfig.poolSize or 2) / 2)
+        setTimeout sync, 5000

@@ -70,7 +70,9 @@ class exports.DiscoverItems extends DiscoverRequest
             if el.attrs.node
                 result.node = el.attrs.node
             @results.push result
-        if el.attrs.from is 'topics.surevine5.net' and el.attrs.actorType is 'server'
+        logger.debug '----------- DISCO ITEMS'
+        logger.debug el.toString()
+        if el.attrs.from is 'topics.surevine5.net'
           @results.push { jid: 'buddycloud.surevine5.net' }
 
 class exports.DiscoverInfo extends DiscoverRequest

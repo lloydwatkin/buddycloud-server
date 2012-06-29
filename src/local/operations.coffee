@@ -272,13 +272,17 @@ class BrowseInfo extends Operation
                 type: "inbox"
                 name: "Channels inbox service"
             }]
-        if @req.iq.attrs.to in @router.config.advertiseDomains
-          to   = @req.iq.attrs.to
-          identities = [{
-              category: "pubsub"
-              type: "channels"
-              name: "Buddycloud proxy domain"
-          }]
+        #if @req.iq.attrs.to in @router.config.advertiseDomains
+        #  to   = @req.iq.attrs.to
+        #  identities = [{
+        #      type: "service"
+        #      category: "pubsub"
+        #      name: "Buddycloud proxy domain"
+        #  }, {
+        #        category: "pubsub"
+        #        type: "channels"
+        #        name: "Channels service"
+        #    }]
         cb null,
             features: [
                 NS.DISCO_INFO, NS.DISCO_ITEMS,
@@ -293,14 +297,12 @@ class BrowseNodeInfo extends PrivilegedOperation
     # See access control notice of RetrieveNodeConfiguration
     transaction: (t, cb) ->
         t.getConfig @req.node, (err, config) =>
-            cb err,
-                node: @req.node
-                features: [
+            features = [
                     NS.DISCO_INFO, NS.DISCO_ITEMS,
                     NS.REGISTER,
                     NS.PUBSUB, NS.PUBSUB_OWNER
                 ]
-                identities: [{
+            identities = [{
                     category: "pubsub"
                     type: "leaf"
                     name: "XEP-0060 node"
@@ -309,6 +311,16 @@ class BrowseNodeInfo extends PrivilegedOperation
                     type: "channel"
                     name: "buddycloud channel"
                 }]
+            #if @req.iq.attrs.to in @router.config.advertiseDomains
+            #  identities = [{
+            #    category: "pubsub"
+            #    type: "proxy"
+            #    name: "Buddycloud proxy domain"
+            #  }]
+            cb err,
+                node: @req.node
+                features: features
+                identities: identities
                 config: config
 
 class BrowseNodes extends ModelOperation
