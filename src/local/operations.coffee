@@ -272,17 +272,13 @@ class BrowseInfo extends Operation
                 type: "inbox"
                 name: "Channels inbox service"
             }]
-        #if @req.iq.attrs.to in @router.config.advertiseDomains
-        #  to   = @req.iq.attrs.to
-        #  identities = [{
-        #      type: "service"
-        #      category: "pubsub"
-        #      name: "Buddycloud proxy domain"
-        #  }, {
-        #        category: "pubsub"
-        #        type: "channels"
-        #        name: "Channels service"
-        #    }]
+        if @req.iq.attrs.to in @router.config.advertiseDomains
+          to   = @req.iq.attrs.to
+          identities = [{
+              type: "service"
+              category: "pubsub"
+              name: "Buddycloud proxy domain"
+          }]
         cb null,
             features: [
                 NS.DISCO_INFO, NS.DISCO_ITEMS,
@@ -311,12 +307,12 @@ class BrowseNodeInfo extends PrivilegedOperation
                     type: "channel"
                     name: "buddycloud channel"
                 }]
-            #if @req.iq.attrs.to in @router.config.advertiseDomains
-            #  identities = [{
-            #    category: "pubsub"
-            #    type: "proxy"
-            #    name: "Buddycloud proxy domain"
-            #  }]
+            if @req.iq.attrs.to in @router.config.advertiseDomains
+              identities = [{
+                category: "pubsub"
+                type: "proxy"
+                name: "Buddycloud proxy domain"
+              }]
             cb err,
                 node: @req.node
                 features: features
